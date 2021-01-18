@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const User = require('../models/user');
 
-// require('dotenv').config();
+require('dotenv').config();
 
 exports.postSignUp = async (req, res, next) => {
 	const result = validationResult(req);
