@@ -16,7 +16,7 @@ const orderSchema = new Schema(
 					ref: 'Game',
 				},
 				price: Number,
-        key: {
+        keygame: {
 					type: Schema.Types.ObjectId,
 					ref: 'Keygame',
         }

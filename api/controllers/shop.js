@@ -199,12 +199,12 @@ exports.postPurchaseGames = async (req, res, next) => {
 		// *push vào order
 		for (const gameId of games) {
 			const keygame = new Keygame({ gameId, key: v4() });
-			const result = await keygame.save();
+			await keygame.save();
 			const game = gamesList.find((game) => game._id.toString() === gameId);
 			order.games.push({
 				game,
 				price: game.price,
-				key: result,
+				keygame,
 			});
 		}
 		user.balance -= TOTAL_PRICE;
@@ -224,18 +224,45 @@ exports.getOrdersByUserId = async (req, res, next) => {
 	const { userId } = req;
 
 	try {
-		const orders = await Order.find({ userId }, '-userId')
+		const orders = await Order.find({ userId }, '-userId -games.key')
 			.populate('games.game', {
 				name: 1,
 				images: { $slice: 1 },
 			})
-			.populate('games.key', 'key');
+			.populate('games.key', 'key')
+			.sort({ createdAt: -1 });
 
 		res.status(200).json({
 			orders: orders.map((order) => {
 				return { ...order._doc, key: order._id };
 			}),
 		});
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.GetDetailOrderById = async (req, res, next) => {
+	const { userId } = req;
+	const { orderId } = req.params;
+	console.log(userId, orderId);
+	try {
+		const order = await Order.findById(orderId)
+			.populate('games.game', {
+				name: 1,
+				description: 1,
+				images: { $slice: 1 },
+			})
+			.populate('games.keygame', 'key');
+
+		if (order.userId.toString() !== userId) {
+			const error = new Error('Bạn không có quyền xem order này!');
+			error.statusCode = 402;
+			return next(error);
+		}
+
+		res.status(200).json({ order });
 	} catch (err) {
 		console.log(err);
 		next(err);

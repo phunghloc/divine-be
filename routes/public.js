@@ -81,6 +81,9 @@ router.post('/cash', isAuth, ShopControllers.postCash);
 router.post('/purchase', isAuth, ShopControllers.postPurchaseGames);
 
 // */orders
-router.get('/orders', isAuth, ShopControllers.getOrdersByUserId)
+router.get('/orders', isAuth, ShopControllers.getOrdersByUserId);
+
+// */order/:orderId
+router.get('/order/:orderId', isAuth, ShopControllers.GetDetailOrderById);
 
 module.exports = router;
