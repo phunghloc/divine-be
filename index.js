@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const morgan = require('morgan');
 
-require('dotenv').config();
+// require('dotenv').config();
 
 const adminRoutes = require('./routes/admin');
 const shopRoutes = require('./routes/public');
