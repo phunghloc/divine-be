@@ -7,7 +7,7 @@ const ShopControllers = require('../api/controllers/shop');
 
 const User = require('../api/models/user');
 
-const isAuth = require('../middleware/isAuth');
+const { isAuth, isLogined } = require('../middleware/isAuth');
 
 const router = express.Router();
 
@@ -54,14 +54,24 @@ router.post(
 router.post('/auth/login', AuthControllers.postLogin);
 router.get('/auth/auto-login', isAuth, AuthControllers.getAutoLogin);
 
+// */user
+router.get('/user/:userId', AuthControllers.getUser);
+
 // */
 router.get('/', ShopControllers.getGamesHomepage);
 
 // */detail-game/:idGame
-router.get('/detail-game/:idGame', ShopControllers.getDetailGameById);
+router.get(
+	'/detail-game/:idGame',
+	isLogined,
+	ShopControllers.getDetailGameById,
+);
 
 // */search-game?name=
 router.get('/search-game', ShopControllers.findGameByName);
+
+// */cart
+router.get('/cart', isAuth, ShopControllers.getCart);
 
 // */add-to-cart
 router.post('/add-to-cart', isAuth, ShopControllers.addToCart);
@@ -84,6 +94,12 @@ router.post('/purchase', isAuth, ShopControllers.postPurchaseGames);
 router.get('/orders', isAuth, ShopControllers.getOrdersByUserId);
 
 // */order/:orderId
-router.get('/order/:orderId', isAuth, ShopControllers.GetDetailOrderById);
+router.get('/order/:orderId', isAuth, ShopControllers.getDetailOrderById);
+
+// */activate-by-key
+router.post('/activate-by-key', isAuth, ShopControllers.activatedGameByKeygame);
+
+// */check-key
+router.post('/check-key', ShopControllers.checkKeygame);
 
 module.exports = router;

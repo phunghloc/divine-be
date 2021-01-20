@@ -36,11 +36,11 @@ const userSchema = new Schema(
 			},
 		],
 		cart: [{ type: Schema.Types.ObjectId, required: true, ref: 'Game' }],
-		purchasedHistory: [
+		chargedHistory: [
 			{
 				type: Schema.Types.ObjectId,
 				required: true,
-				ref: 'Order',
+				// ref: 'Order',
 			},
 		],
 		activatedGames: [

@@ -14,7 +14,7 @@ const keygameSchema = new Schema(
 			type: Schema.Types.ObjectId,
 			ref: 'Game',
 		},
-		activedBy: {
+		activatedBy: {
 			type: Schema.Types.ObjectId,
 			ref: 'User',
 		},

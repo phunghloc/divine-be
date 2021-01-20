@@ -97,3 +97,24 @@ exports.getAutoLogin = async (req, res, next) => {
 		return next(error);
 	}
 };
+
+exports.getUser = async (req, res, next) => {
+	const { userId } = req.params;
+
+	try {
+		const user = await User.findById(
+			userId,
+			'name activatedGames balance email phoneNumber',
+		).populate('activatedGames', { name: 1, images: { $slice: 1 } });
+
+		if (!user) {
+			throw new Error();
+		}
+
+		res.json({ user });
+	} catch (err) {
+		const error = new Error('Không tìm thấy người dùng');
+		error.statusCode = 404;
+		next(error);
+	}
+};

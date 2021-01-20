@@ -27,24 +27,25 @@ exports.getGamesHomepage = async (req, res, next) => {
 
 exports.findGameByName = async (req, res, next) => {
 	const name = req.query.name || '';
-	// const page = req.query.page || '';
+	const page = req.query.page || 0;
+	const ITEM_PER_PAGE = 12;
 
-	const nameReg = new RegExp(name);
+	const queryString = name
+		.split('')
+		.map((c) => `${c}[\\w\\W ]*`)
+		.join('');
+
+	const nameReg = new RegExp(queryString);
 	try {
 		games = await Game.find(
-			{ name: { $regex: nameReg, $options: 'i' } },
-			'name price images',
+			{ name: { $regex: nameReg, $options: 'gi' } },
+			{ name: 1, price: 1, images: { $slice: 1 } },
 		)
 			.sort('-createdAt')
-			.limit(5);
+			.skip(page * ITEM_PER_PAGE)
+			.limit(12);
 
-		const sendBackGames = games.map((game) => {
-			const newGame = { ...game._doc };
-			newGame.images = newGame.images[0].url;
-			return newGame;
-		});
-
-		res.json({ games: sendBackGames });
+		res.json({ games });
 	} catch (err) {
 		next(err);
 	}
@@ -52,19 +53,54 @@ exports.findGameByName = async (req, res, next) => {
 
 exports.getDetailGameById = async (req, res, next) => {
 	const { idGame } = req.params;
+	const { userId } = req;
 	try {
+		let owned = false;
 		const game = await Game.findById(idGame).populate('developer tags.tagId');
 
 		if (!game) {
 			throw new Error();
 		}
 
-		res.status(200).json({ game });
+		if (userId) {
+			const user = await User.findById(userId, 'activatedGames');
+			owned = !!user.activatedGames.find(
+				(gameId) => gameId.toString() === idGame,
+			);
+		}
+
+		const sendBackGame = { ...game._doc };
+		if (!owned) {
+			delete sendBackGame.linkSteam;
+		}
+
+		res.status(200).json({ game: sendBackGame });
 	} catch (err) {
 		console.log(err);
 		const error = new Error('Không tìm thấy game');
 		error.statusCode = 404;
 		next(error);
+	}
+};
+
+exports.getCart = async (req, res, next) => {
+	const { userId } = req;
+
+	try {
+		const user = await User.findById(userId).populate('cart', {
+			images: { $slice: 1 },
+			name: 1,
+			price: 1,
+		});
+
+		const cart = user.cart.map((item) => {
+			return { ...item._doc, owned: user.activatedGames.includes(item._id) };
+		});
+
+		res.json({ cart });
+	} catch (err) {
+		console.log(err);
+		next(err);
 	}
 };
 
@@ -243,10 +279,10 @@ exports.getOrdersByUserId = async (req, res, next) => {
 	}
 };
 
-exports.GetDetailOrderById = async (req, res, next) => {
+exports.getDetailOrderById = async (req, res, next) => {
 	const { userId } = req;
 	const { orderId } = req.params;
-	console.log(userId, orderId);
+
 	try {
 		const order = await Order.findById(orderId)
 			.populate('games.game', {
@@ -254,7 +290,7 @@ exports.GetDetailOrderById = async (req, res, next) => {
 				description: 1,
 				images: { $slice: 1 },
 			})
-			.populate('games.keygame', 'key');
+			.populate('games.keygame', 'key activatedBy');
 
 		if (order.userId.toString() !== userId) {
 			const error = new Error('Bạn không có quyền xem order này!');
@@ -262,7 +298,83 @@ exports.GetDetailOrderById = async (req, res, next) => {
 			return next(error);
 		}
 
-		res.status(200).json({ order });
+		const user = await User.findById(userId, 'activatedGames');
+
+		const activatedList = order.games.reduce((total, gameItem) => {
+			total[gameItem.game._id.toString()] = !!user.activatedGames.find(
+				(gameId) => {
+					return gameId.toString() === gameItem.game._id.toString();
+				},
+			);
+			return total;
+		}, {});
+
+		res.status(200).json({ order, activatedList });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.checkKeygame = async (req, res, next) => {
+	const { key } = req.body;
+
+	try {
+		const keygame = await Keygame.findOne({ key }).populate('gameId', {
+			name: 1,
+			images: { $slice: 1 },
+		});
+
+		if (!keygame) {
+			throw new Error();
+		}
+
+		res.json({ keygame });
+	} catch (err) {
+		const error = new Error('Keygame không hợp lệ, xin hãy kiểm tra lại!');
+		error.statusCode = 404;
+		next(error);
+	}
+};
+
+exports.activatedGameByKeygame = async (req, res, next) => {
+	const { userId } = req;
+	const key = req.body.keygame;
+
+	try {
+		const keygame = await Keygame.findOne({ key }).populate('gameId', 'name');
+		if (keygame.activatedBy) {
+			const error = new Error('Keygame này đã có người sử dụng!');
+			error.statusCode = 422;
+			return next(error);
+		}
+
+		const user = await User.findById(userId);
+		const isHaveThisGame = user.activatedGames.find(
+			(gameId) => gameId.toString() === keygame.gameId._id.toString(),
+		);
+		if (isHaveThisGame) {
+			const error = new Error(
+				`Tài khoản đã sở hữu game ${keygame.gameId.name} này rồi!`,
+			);
+			error.statusCode = 422;
+			return next(error);
+		}
+
+		keygame.activatedBy = user;
+		await keygame.save();
+
+		user.activatedGames.push(keygame.gameId);
+		await user.save();
+
+		res.json({
+			keygame: {
+				_id: keygame._id,
+				key: keygame.key,
+				activatedBy: user._id,
+			},
+			gameId: keygame.gameId._id,
+		});
 	} catch (err) {
 		console.log(err);
 		next(err);

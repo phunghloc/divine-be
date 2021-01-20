@@ -2,12 +2,12 @@ const jwt = require('jsonwebtoken');
 
 require('dotenv').config();
 
-module.exports = (req, res, next) => {
+exports.isAuth = (req, res, next) => {
 	const authHeader = req.get('Authorization');
 	if (!authHeader) {
 		const error = new Error('Not login yet');
 		error.statusCode = 401;
-		next(error);
+		return next(error);
 	}
 
 	const token = authHeader.split(' ')[1];
@@ -16,15 +16,29 @@ module.exports = (req, res, next) => {
 		decodedToken = jwt.verify(token, process.env.JWT_KEY);
 	} catch (err) {
 		err.statusCode = 422;
-		next(err);
+		return next(err);
 	}
 
 	if (!decodedToken) {
 		const error = new Error('Invalid Token');
 		error.statusCode = 401;
-		next(error);
+		return next(error);
 	}
 
 	req.userId = decodedToken.userId;
+	next();
+};
+
+exports.isLogined = (req, res, next) => {
+	try {
+		const authHeader = req.get('Authorization');
+
+		const token = authHeader.split(' ')[1];
+		let decodedToken;
+		decodedToken = jwt.verify(token, process.env.JWT_KEY);
+
+		req.userId = decodedToken.userId;
+	} catch (err) {}
+
 	next();
 };

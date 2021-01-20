@@ -26,6 +26,7 @@ const gameSchema = new Schema(
 			},
 		],
 		description: String,
+		linkSteam: String,
 		minimumRequirement: Object,
 		recommendRequirement: Object,
 		images: [{ url: String, path: String, main: String, thumb: String }],
