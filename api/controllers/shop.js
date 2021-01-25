@@ -484,7 +484,7 @@ exports.deleteReplyInGame = async (req, res, next) => {
 	try {
 		const game = await Game.findById(gameId, 'comments');
 		const commentIndex = game.comments.findIndex(
-			(comment) => comment._id.toString() === commentId,
+			(comment) => comment._id.toString() === commentId.toString(),
 		);
 		if (commentIndex < 0) {
 			const error = new Error('Không tìm thấy bình luận!');
@@ -493,7 +493,7 @@ exports.deleteReplyInGame = async (req, res, next) => {
 		}
 
 		const replyIndex = game.comments[commentIndex].replies.findIndex(
-			(reply) => reply._id.toString() !== replyId.toString(),
+			(reply) => reply._id.toString() === replyId.toString(),
 		);
 
 		if (replyIndex < 0) {
