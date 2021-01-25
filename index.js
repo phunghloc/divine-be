@@ -36,7 +36,7 @@ const port = process.env.PORT || 4808;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.bodyParser());
+// app.use(express.bodyParser());
 app.use(upload.any());
 app.use(morgan('tiny'));
 
