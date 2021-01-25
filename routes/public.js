@@ -29,7 +29,7 @@ router.post(
 					}
 				});
 			}),
-		body('name').trim().isLength({ min: 1 }),
+		body('name').trim().isLength({ min: 1, max: 40 }),
 		body('username')
 			.trim()
 			.isLength({ min: 1 })
@@ -55,17 +55,68 @@ router.post('/auth/login', AuthControllers.postLogin);
 router.get('/auth/auto-login', isAuth, AuthControllers.getAutoLogin);
 
 // */user
+router.post('/user/edit/avatar', isAuth, AuthControllers.postAvatar);
+router.post(
+	'/user/edit/info',
+	isAuth,
+	[
+		body('name', 'Tên không hợp lệ.').trim().isLength({ min: 1, max: 40 }),
+		body('phoneNumber', 'Số điện thoại không hợp lệ.').trim().isNumeric(),
+	],
+	AuthControllers.postChangeInfo,
+);
+router.post(
+	'/user/edit/password',
+	isAuth,
+	[
+		body('password', 'Mật khẩu ít nhất 6 ký tự').trim().isLength({ min: 6 }),
+		body('confirmPassword').custom((confPass, { req }) => {
+			if (confPass !== req.body.password) {
+				throw new Error('Nhập lại mật khẩu không khớp.');
+			}
+			return true;
+		}),
+	],
+	AuthControllers.postChangePassword,
+);
+router.get('/user/edit', isAuth, AuthControllers.getOwnerUser);
 router.get('/user/:userId', AuthControllers.getUser);
 
 // */
 router.get('/', ShopControllers.getGamesHomepage);
 
-// */detail-game/:idGame
+//* /detail-game/:gameId
 router.get(
-	'/detail-game/:idGame',
+	'/detail-game/:gameId',
 	isLogined,
 	ShopControllers.getDetailGameById,
 );
+
+//TODO post comment
+router.post(
+	'/detail-game/:gameId/comment',
+	isAuth,
+	[body('comment', 'Bình luận không hợp lệ!').trim().notEmpty()],
+	ShopControllers.postCommentInGame,
+);
+
+//TODO post reply
+router.post(
+	'/detail-game/:gameId/:commentId',
+	isAuth,
+	[body('comment', 'Bình luận không hợp lệ!').trim().notEmpty()],
+	ShopControllers.postReplyInCommentGame,
+);
+
+//TODO delete comment
+router.delete(
+	'/detail-game/:gameId/:commentId',
+	isAuth,
+	ShopControllers.deleteCommentInGame,
+);
+
+//TODO delete reply
+router.delete('/detail-game/:gameId/:commentId/:replyId', isAuth, ShopControllers.deleteReplyInGame)
 
 // */search-game?name=
 router.get('/search-game', ShopControllers.findGameByName);

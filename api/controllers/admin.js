@@ -1,7 +1,7 @@
 const Developer = require('../models/developer');
 const Tag = require('../models/tag');
 const Game = require('../models/game');
-const cloudinary = require('../models/cloudinary');
+const Cloudinary = require('../models/cloudinary');
 
 exports.getAllDevlopers = async (req, res) => {
 	try {
@@ -74,7 +74,7 @@ exports.postGame = async (req, res) => {
 	let res_promises = req.files.map(
 		(file) =>
 			new Promise((resolve, reject) => {
-				cloudinary.uploadMultiple(file.path).then((result) => {
+				Cloudinary.uploadMultiple(file.path).then((result) => {
 					resolve(result);
 				});
 			}),

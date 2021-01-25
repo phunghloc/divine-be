@@ -1,0 +1,6 @@
+Detail-phim
+  -comment & reply:
+    + update dom after reply & clear input.
+    + delete (be + fe).
+
+  

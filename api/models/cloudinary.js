@@ -28,6 +28,26 @@ const self = (module.exports = {
 		});
 	},
 
+	uploadMultipleAvatar: (file) => {
+		return new Promise((resolve) => {
+			cloudinary.uploader
+				.upload(file, {
+					folder: 'avatar',
+				})
+				.then((result) => {
+					if (result) {
+						const fs = require('fs');
+						fs.unlinkSync(file);
+						resolve({
+							url: result.secure_url,
+							path: result.public_id,
+							avatar: self.reSizeImage(result.public_id, 400, 400),
+						});
+					}
+				});
+		});
+	},
+
 	reSizeImage: (id, h, w) => {
 		return cloudinary.url(id, {
 			height: h,

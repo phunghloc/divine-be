@@ -34,14 +34,17 @@ const gameSchema = new Schema(
 			{
 				userId: {
 					type: Schema.Types.ObjectId,
-					required: true,
 					ref: 'User',
 				},
 				comment: {
 					type: String,
 					required: true,
 				},
-				date: {
+				createdDate: {
+					type: Date,
+					default: Date.now,
+				},
+				updatedDate: {
 					type: Date,
 					default: Date.now,
 				},
@@ -49,14 +52,17 @@ const gameSchema = new Schema(
 					{
 						userId: {
 							type: Schema.Types.ObjectId,
-							required: true,
 							ref: 'User',
 						},
 						comment: {
 							type: String,
 							required: true,
 						},
-						date: {
+						createdDate: {
+							type: Date,
+							default: Date.now,
+						},
+						updatedDate: {
 							type: Date,
 							default: Date.now,
 						},

@@ -5,12 +5,12 @@ const User = require('../models/user');
 const Cash = require('../models/cash');
 const Keygame = require('../models/keygame');
 const Order = require('../models/order');
+const { validationResult } = require('express-validator');
 
 exports.getGamesHomepage = async (req, res, next) => {
 	try {
-		const games = await Game.find({}, 'name price images')
-			.sort('-createdAt')
-			.limit(12);
+		const games = await Game.find({}, 'name price images').sort('-createdAt');
+		// .limit(12);
 		const sendBackGames = games.map((game) => {
 			const newGame = { ...game._doc };
 			newGame.images = newGame.images[0].url;
@@ -52,11 +52,14 @@ exports.findGameByName = async (req, res, next) => {
 };
 
 exports.getDetailGameById = async (req, res, next) => {
-	const { idGame } = req.params;
+	const { gameId } = req.params;
 	const { userId } = req;
 	try {
 		let owned = false;
-		const game = await Game.findById(idGame).populate('developer tags.tagId');
+		const game = await Game.findById(gameId)
+			.populate('developer tags.tagId')
+			.populate('comments.userId', 'name avatar')
+			.populate('comments.replies.userId', 'name avatar');
 
 		if (!game) {
 			throw new Error();
@@ -64,9 +67,7 @@ exports.getDetailGameById = async (req, res, next) => {
 
 		if (userId) {
 			const user = await User.findById(userId, 'activatedGames');
-			owned = !!user.activatedGames.find(
-				(gameId) => gameId.toString() === idGame,
-			);
+			owned = !!user.activatedGames.find((gId) => gId.toString() === gameId);
 		}
 
 		const sendBackGame = { ...game._doc };
@@ -199,7 +200,7 @@ exports.postCash = async (req, res, next) => {
 		await cash.save();
 
 		res.status(201).json({
-			message: `Nạp thành công ${cash.denominate} vào tài khoản ${user.username}.`,
+			message: `Nạp thành công ${cash.denominate} VNĐ vào tài khoản ${user.username}.`,
 			balance: result.balance,
 		});
 	} catch (err) {
@@ -375,6 +376,146 @@ exports.activatedGameByKeygame = async (req, res, next) => {
 			},
 			gameId: keygame.gameId._id,
 		});
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.postCommentInGame = async (req, res, next) => {
+	const result = validationResult(req);
+
+	if (!result.isEmpty()) {
+		const error = new Error(result.array()[0].msg);
+		error.statusCode = 422;
+		return next(error);
+	}
+
+	try {
+		const { userId } = req;
+		const { comment } = req.body;
+		const { gameId } = req.params;
+		const game = await Game.findById(gameId, 'comments');
+
+		game.comments.unshift({ userId, comment: comment.trim() });
+
+		await game.save();
+
+		res.json({ comment: game.comments[0] });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.deleteCommentInGame = async (req, res, next) => {
+	try {
+		const { userId } = req;
+		const { gameId, commentId } = req.params;
+		const game = await Game.findById(gameId, 'comments');
+
+		const commentIndex = game.comments.findIndex(
+			(comment) => comment._id.toString() === commentId.toString(),
+		);
+
+		if (commentIndex < 0) {
+			const error = new Error('Không tìm thấy bình luận!');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		if (game.comments[commentIndex].userId.toString() !== userId) {
+			const error = new Error('Không thể xóa bình luận của người khác!');
+			error.statusCode = 422;
+			return next(error);
+		}
+
+		game.comments.splice(commentIndex, 1);
+		await game.save();
+
+		res.json({ message: 'Đã xóa bình luận!' });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.postReplyInCommentGame = async (req, res, next) => {
+	const result = validationResult(req);
+
+	if (!result.isEmpty()) {
+		const error = new Error(result.array()[0].msg);
+		error.statusCode = 422;
+		return next(error);
+	}
+
+	try {
+		const { userId } = req;
+		const { gameId, commentId } = req.params;
+		const { comment } = req.body;
+
+		const game = await Game.findById(gameId, 'comments');
+
+		const commentIndex = game.comments.findIndex(
+			(comment) => comment._id.toString() === commentId,
+		);
+
+		if (commentIndex < 0) {
+			const error = new Error('Không tìm thấy bình luận!');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		game.comments[commentIndex].replies.push({ userId, comment });
+
+		await game.save();
+
+		res.json({ reply: game.comments[commentIndex].replies.slice(-1)[0] });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.deleteReplyInGame = async (req, res, next) => {
+	const { userId } = req;
+	const { gameId, commentId, replyId } = req.params;
+
+	try {
+		const game = await Game.findById(gameId, 'comments');
+		const commentIndex = game.comments.findIndex(
+			(comment) => comment._id.toString() === commentId,
+		);
+		if (commentIndex < 0) {
+			const error = new Error('Không tìm thấy bình luận!');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		const replyIndex = game.comments[commentIndex].replies.findIndex(
+			(reply) => reply._id.toString() !== replyId.toString(),
+		);
+
+		if (replyIndex < 0) {
+			const error = new Error('Không tìm thấy trả lời bình luận!');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		if (
+			game.comments[commentIndex].replies[replyIndex].userId.toString() !==
+			userId.toString()
+		) {
+			const error = new Error('Bạn không thể xóa bình luận của người khác!');
+			error.statusCode = 402;
+			return next(error);
+		}
+
+		game.comments[commentIndex].replies.splice(replyIndex, 1);
+
+		await game.save();
+
+		res.json({ message: 'Đã xóa bình luận' });
 	} catch (err) {
 		console.log(err);
 		next(err);
