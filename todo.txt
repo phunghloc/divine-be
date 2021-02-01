@@ -1,7 +1,5 @@
-login + signup (reponsive modal)
-
-drawer for mobile (reponsive)
-
 update avatar in comment after change
 
-  
+notification (like, comment)
+
+delete post + delete comment 

@@ -74,7 +74,7 @@ exports.postGame = async (req, res) => {
 	let res_promises = req.files.map(
 		(file) =>
 			new Promise((resolve, reject) => {
-				Cloudinary.uploadMultiple(file.path).then((result) => {
+				Cloudinary.uploadMultiple(file.path, 'home').then((result) => {
 					resolve(result);
 				});
 			}),
@@ -83,7 +83,7 @@ exports.postGame = async (req, res) => {
 	Promise.all(res_promises)
 		.then(async (arrImg) => {
 			// arrImg = { url, path }
-			const { name, price, developer } = req.body;
+			const { name, price, developer, description, linkSteam } = req.body;
 
 			const minimumRequirement = {
 				os: req.body['minimum.os'],
@@ -113,6 +113,8 @@ exports.postGame = async (req, res) => {
 				recommendRequirement,
 				tags,
 				images: arrImg,
+				description,
+				linkSteam,
 			};
 
 			const game = new Game(gameData);
@@ -147,7 +149,7 @@ exports.getGames = async (req, res, next) => {
 		const resGames = games.map((game) => {
 			return { ...game._doc, images: game.images[0].url };
 		});
-		
+
 		res.status(200).json({ games: resGames, total });
 	} catch (err) {
 		next(err);

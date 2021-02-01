@@ -9,11 +9,11 @@ cloudinary.config({
 });
 
 const self = (module.exports = {
-	uploadMultiple: (file) => {
+	uploadMultiple: (file, folder) => {
 		return new Promise((resolve) => {
 			cloudinary.uploader
 				.upload(file, {
-					folder: 'home',
+					folder,
 				})
 				.then((result) => {
 					if (result) {

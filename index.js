@@ -10,6 +10,7 @@ require('dotenv').config();
 
 const adminRoutes = require('./routes/admin');
 const shopRoutes = require('./routes/public');
+const postRoutes = require('./routes/post');
 
 const app = express();
 const storage = multer.diskStorage({
@@ -34,13 +35,14 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 const port = process.env.PORT || 4808;
 
-app.use(cors());
+app.use(cors({ origin: process.env.ORIGIN }));
 app.use(express.json());
-// app.use(express.bodyParser());
+app.use(express.urlencoded({ extended: false }));
 app.use(upload.any());
 app.use(morgan('tiny'));
 
 app.use('/Admin-ryQbkvWamg', adminRoutes);
+app.use('/posts', postRoutes);
 app.use(shopRoutes);
 
 app.use((req, res, next) => {
@@ -65,8 +67,36 @@ mongoose
 		useUnifiedTopology: true,
 	})
 	.then((result) => {
-		app.listen(port, () => {
+		const server = app.listen(port, () => {
 			console.log(`app listen on ${port}`);
+		});
+		const io = require('./io').init(server);
+
+		io.on('connection', (socket) => {
+			console.log(socket.id);
+			if (socket.handshake.auth.userId) {
+				const userId = socket.handshake.auth.userId;
+				socket.userId = userId;
+				socket.join(userId);
+			}
+
+			socket.on('join community', () => {
+				console.log(`${socket.id} join community`);
+				socket.join('community');
+			});
+
+			socket.on('leave community', () => {
+				console.log(`${socket.id} leave community`);
+				socket.disconnect();
+			});
+
+			socket.on('logout', () => {
+				socket.disconnect();
+			});
+
+			socket.on('disconnect', () => {
+				console.log(`${socket.id} disconnect`);
+			});
 		});
 	})
 	.catch((err) => {
