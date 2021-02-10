@@ -39,7 +39,7 @@ app.use(cors({ origin: process.env.ORIGIN }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(upload.any());
-app.use(morgan('tiny'));
+app.use(morgan('dev'));
 
 app.use('/Admin-ryQbkvWamg', adminRoutes);
 app.use('/posts', postRoutes);

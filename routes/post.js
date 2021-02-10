@@ -6,17 +6,23 @@ const { isAuth, isLogined } = require('../middleware/isAuth');
 
 const router = express.Router();
 
-// '/posts/create/'
-router.post('/create', isAuth, PostController.createPost);
-
 // /posts
 router.get('/', isLogined, PostController.getPosts);
+
+// '/posts/create/'
+router.post('/create', isAuth, PostController.createPost);
 
 // /posts/toggle-like
 router.get('/toggle-like/:postId', isAuth, PostController.toggleLikePost);
 
 // /posts/comment/:commentId
 router.post('/:postId/comment', isAuth, PostController.postComment);
+
+// /posts/loadmore/:postId/:lastCommentId
+router.get('/loadmore/:postId/:lastCommentId', PostController.loadmoreCommentInPost);
+
+// TODO: PUT
+router.put('/:postId/:commentId', isAuth, PostController.updateComment);
 
 // TODO: DELETE
 // /posts/delete/

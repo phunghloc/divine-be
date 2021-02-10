@@ -76,10 +76,17 @@ exports.getPosts = async (req, res, next) => {
 			if (userId) {
 				likedThisPost = !!post.likes.find((uid) => uid.toString() === userId);
 			}
-			return { ...post._doc, likes: post.likes.length, likedThisPost };
+			return {
+				...post._doc,
+				likes: post.likes.length,
+				likedThisPost,
+				commentsCount: post.comments.length,
+				comments: post.comments.slice(-1),
+			};
 		});
-
-		res.json({ posts: sendBackPost, total });
+		setTimeout(() => {
+			res.json({ posts: sendBackPost, total });
+		}, 2000);
 	} catch (err) {
 		console.log(err);
 		next(err);
@@ -205,6 +212,60 @@ exports.postComment = async (req, res, next) => {
 	}
 };
 
+exports.updateComment = async (req, res, next) => {
+	const { userId } = req;
+	const { commentId, postId } = req.params;
+	const { newComment } = req.body;
+
+	// TODO: Tìm post -> tìm comment -> kiểm tra user chỉnh sửa === user comment -> chỉnh sửa -> ghi log
+
+	try {
+		const post = await Post.findById(postId, 'comments');
+
+		// 404: Không tìm thấy post
+		if (!post) {
+			const error = new Error('Không tìm thấy bài đăng!');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		const commentIndex = post.comments.findIndex(
+			(c) => c._id.toString() === commentId,
+		);
+
+		// 404: Không tìm thấy comment
+		if (commentIndex < 0) {
+			const error = new Error('Không tìm thấy bình luận!');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		// 402: Không có quyền chỉnh sửa
+		if (post.comments[commentIndex].userId.toString() !== userId) {
+			const error = new Error('Không thể chỉnh sửa bình luận của người khác!');
+			error.statusCode = 402;
+			return next(error);
+		}
+
+		// chỉnh sửa và lưu vào database
+		post.comments[commentIndex].comment = newComment;
+		await post.save();
+
+		// ghi log
+		const log = new Log({
+			userId,
+			rootId: post._id,
+			type: 'edit comment',
+		});
+		await log.save();
+
+		res.status(201).json({ message: 'Chỉnh sửa comment thành công!' });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
 exports.deleteComment = async (req, res, next) => {
 	const { userId } = req;
 	const { postId, commentId } = req.params;
@@ -243,5 +304,30 @@ exports.deleteComment = async (req, res, next) => {
 	} catch (err) {
 		console.log(err);
 		next(err);
+	}
+};
+
+exports.loadmoreCommentInPost = async (req, res, next) => {
+	// TODO: tìm post -> tìm comment cuối mà user đang hiện thị trên dom -> lấy 5 comment trước đó
+	const { postId, lastCommentId } = req.params;
+	try {
+		const post = await Post.findById(postId, 'comments').populate(
+			'comments.userId',
+			'name avatar',
+		);
+
+		const commentIndex = post.comments.findIndex(
+			(comment) => comment._id.toString() === lastCommentId,
+		);
+
+		res.json({
+			comments: post.comments.slice(
+				Math.max(commentIndex - 5, 0),
+				commentIndex,
+			),
+		});
+	} catch (err) {
+		console.log(err);
+		return next(err);
 	}
 };

@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const Schema = mongoose.Schema;
 
-
 const logSchema = new Schema(
 	{
 		userId: {
@@ -19,10 +18,10 @@ const logSchema = new Schema(
 
 module.exports = mongoose.model('Log', logSchema);
 
-// type: 
-// 'like', 
-// 'comment game', 
-// 'comment post', 
-// 'create post', 
+// type:
+// 'like',
+// 'comment game',
+// 'comment post',
+// 'create post',
 // 'delete post',
 // 'delete comment'
