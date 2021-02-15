@@ -482,6 +482,8 @@ exports.postReplyInCommentGame = async (req, res, next) => {
 		//TODO: push notification + realtime
 		const ownerComment = game.comments[commentIndex].userId.toString();
 
+		if (userId === ownerComment) return;
+
 		const user = await User.findById(ownerComment, 'name avatar notifications');
 		user.notifications.newNotifications++;
 		user.notifications.list.push({ logId: log });
