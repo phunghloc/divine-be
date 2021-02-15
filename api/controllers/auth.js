@@ -35,10 +35,21 @@ exports.postSignUp = async (req, res, next) => {
 };
 
 exports.postLogin = async (req, res, next) => {
+	// TODO: Đăng nhập lấy các thông tin (tên, avatar, balance, cart, số thông báo mới)
 	const { username, password } = req.body;
 
 	try {
-		const user = await User.findOne({ username }).populate('cart', {
+		const user = await User.findOne(
+			{ username },
+			{
+				name: 1,
+				avatar: 1,
+				cart: 1,
+				balance: 1,
+				password: 1,
+				'notifications.newNotifications': 1,
+			},
+		).populate('cart', {
 			name: 1,
 			price: 1,
 			images: { $slice: 1 },
@@ -61,6 +72,7 @@ exports.postLogin = async (req, res, next) => {
 				cart: user.cart,
 				avatar: user.avatar,
 				token: token,
+				notifications: user.notifications,
 			});
 		} else {
 			const error = new Error('Tên tài khoản hoặc mật khẩu không chính xác.');
@@ -68,20 +80,21 @@ exports.postLogin = async (req, res, next) => {
 			return next(error);
 		}
 	} catch (err) {
-		const error = new Error(
-			'Có lỗi xảy ra với server, xin vui lòng thử lại sau.',
-		);
-		error.statusCode = 500;
-		return next(error);
+		console.log(err);
+		return next(err);
 	}
 };
 
 exports.getAutoLogin = async (req, res, next) => {
+	// TODO: Đăng nhập lấy các thông tin (tên, avatar, balance, cart, số thông báo mới)
 	try {
-		const user = await User.findById(
-			req.userId,
-			'name avatar balance cart',
-		).populate('cart', { name: 1, price: 1, images: { $slice: 1 } });
+		const user = await User.findById(req.userId, {
+			name: 1,
+			avatar: 1,
+			balance: 1,
+			cart: 1,
+			'notifications.newNotifications': 1,
+		}).populate('cart', { name: 1, price: 1, images: { $slice: 1 } });
 
 		const sendBackData = {
 			name: user.name,
@@ -89,15 +102,66 @@ exports.getAutoLogin = async (req, res, next) => {
 			userId: user._id,
 			cart: user.cart,
 			avatar: user.avatar,
+			notifications: user.notifications,
 		};
 		res.status(200).json(sendBackData);
 	} catch (err) {
 		console.log(err);
-		const error = new Error(
-			'Có lỗi xảy ra với server, xin vui lòng thử lại sau.',
+		return next(err);
+	}
+};
+
+exports.getNotifications = async (req, res, next) => {
+	// TODO: Lấy 8 thông báo cuối cùng của user
+	const { userId } = req;
+
+	try {
+		const user = await User.findById(userId, {
+			'notifications.newNotifications': 1,
+			'notifications.list': { $slice: -8 },
+		}).populate({
+			path: 'notifications.list.logId',
+			populate: {
+				path: 'userId',
+				select: 'name avatar',
+			},
+		});
+
+		if (user.notifications.newNotifications) {
+			user.notifications.newNotifications = 0;
+			await user.save();
+		}
+
+		res.json({ notifications: user.notifications.list });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.markAsReadNotification = async (req, res, next) => {
+	// TODO: tìm notification index -> đánh dấu nó là đã đọc
+	const { userId } = req;
+	const { notifyId } = req.params;
+
+	try {
+		const user = await User.findById(userId, 'notifications');
+
+		const notifyIndex = user.notifications.list.findIndex(
+			(n) => n._id.toString() === notifyId,
 		);
-		error.statusCode = 500;
-		return next(error);
+
+		if (notifyIndex < 0) {
+			return next(new Error());
+		}
+
+		user.notifications.list[notifyIndex].hasRead = true;
+		await user.save();
+
+		res.json('ok');
+	} catch (err) {
+		console.log(err);
+		next(err);
 	}
 };
 

@@ -1,5 +1,3 @@
-update avatar in comment after change
+làm trang notification
 
-notification (like, comment)
-
-delete post + delete comment 
+test reponsive đth

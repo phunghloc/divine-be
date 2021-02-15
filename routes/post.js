@@ -9,6 +9,8 @@ const router = express.Router();
 // /posts
 router.get('/', isLogined, PostController.getPosts);
 
+router.get('/:postId', isLogined, PostController.getPost);
+
 // '/posts/create/'
 router.post('/create', isAuth, PostController.createPost);
 

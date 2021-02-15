@@ -28,21 +28,7 @@ const userSchema = new Schema(
 			type: Number,
 			default: 100000,
 		},
-		watched: [
-			{
-				type: Schema.Types.ObjectId,
-				required: true,
-				ref: 'Game',
-			},
-		],
 		cart: [{ type: Schema.Types.ObjectId, required: true, ref: 'Game' }],
-		chargedHistory: [
-			{
-				type: Schema.Types.ObjectId,
-				required: true,
-				// ref: 'Order',
-			},
-		],
 		activatedGames: [
 			{
 				type: Schema.Types.ObjectId,
@@ -62,6 +48,24 @@ const userSchema = new Schema(
 		status: {
 			type: String,
 			default: 'Xin chào',
+		},
+		notifications: {
+			newNotifications: {
+				type: Number,
+				default: 0,
+			},
+			list: [
+				{
+					hasRead: {
+						type: Boolean,
+						default: false,
+					},
+					logId: {
+						type: Schema.Types.ObjectId,
+						ref: 'Log',
+					},
+				},
+			],
 		},
 	},
 	{ timestamps: true },

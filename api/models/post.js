@@ -39,10 +39,6 @@ const postSchema = new Schema(
 				ref: 'User',
 			},
 		],
-		available: {
-			type: Boolean,
-			default: true,
-		},
 	},
 	{ timestamps: true },
 );

@@ -1,11 +1,13 @@
 const { v4 } = require('uuid');
+const { validationResult } = require('express-validator');
 
+const Log = require('../models/log');
 const Game = require('../models/game');
 const User = require('../models/user');
 const Cash = require('../models/cash');
-const Keygame = require('../models/keygame');
 const Order = require('../models/order');
-const { validationResult } = require('express-validator');
+const Keygame = require('../models/keygame');
+const SockerIO = require('../../io');
 
 exports.getGamesHomepage = async (req, res, next) => {
 	try {
@@ -441,6 +443,7 @@ exports.deleteCommentInGame = async (req, res, next) => {
 };
 
 exports.postReplyInCommentGame = async (req, res, next) => {
+	// TODO: post reply -> ghi log -> push notification + realtime
 	const result = validationResult(req);
 
 	if (!result.isEmpty()) {
@@ -454,7 +457,7 @@ exports.postReplyInCommentGame = async (req, res, next) => {
 		const { gameId, commentId } = req.params;
 		const { comment } = req.body;
 
-		const game = await Game.findById(gameId, 'comments');
+		const game = await Game.findById(gameId, 'name comments');
 
 		const commentIndex = game.comments.findIndex(
 			(comment) => comment._id.toString() === commentId,
@@ -470,7 +473,25 @@ exports.postReplyInCommentGame = async (req, res, next) => {
 
 		await game.save();
 
+		// TODO: ghi log
+		const log = new Log({ userId, rootId: gameId, type: 'reply game' });
+		await log.save();
+
 		res.json({ reply: game.comments[commentIndex].replies.slice(-1)[0] });
+
+		//TODO: push notification + realtime
+		const ownerComment = game.comments[commentIndex].userId.toString();
+
+		const user = await User.findById(ownerComment, 'name avatar notifications');
+		user.notifications.newNotifications++;
+		user.notifications.list.push({ logId: log });
+		await user.save();
+
+		const io = SockerIO.getIO();
+		io.to(ownerComment).emit('reply game', {
+			user: { name: user.name, avatar: user.avatar },
+			game: { gameId, name: game.name },
+		});
 	} catch (err) {
 		console.log(err);
 		next(err);

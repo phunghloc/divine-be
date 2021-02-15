@@ -51,8 +51,18 @@ router.post(
 	],
 	AuthControllers.postSignUp,
 );
+
 router.post('/auth/login', AuthControllers.postLogin);
+
 router.get('/auth/auto-login', isAuth, AuthControllers.getAutoLogin);
+
+router.get('/auth/get-notifications', isAuth, AuthControllers.getNotifications);
+
+router.get(
+	'/auth/mark-as-read-notification/:notifyId',
+	isAuth,
+	AuthControllers.markAsReadNotification,
+);
 
 // */user
 router.post('/user/edit/avatar', isAuth, AuthControllers.postAvatar);
@@ -116,7 +126,11 @@ router.delete(
 );
 
 //TODO delete reply
-router.delete('/detail-game/:gameId/:commentId/:replyId', isAuth, ShopControllers.deleteReplyInGame)
+router.delete(
+	'/detail-game/:gameId/:commentId/:replyId',
+	isAuth,
+	ShopControllers.deleteReplyInGame,
+);
 
 // */search-game?name=
 router.get('/search-game', ShopControllers.findGameByName);

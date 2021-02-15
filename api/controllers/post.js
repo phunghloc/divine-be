@@ -6,6 +6,7 @@ const Log = require('../models/log');
 const socketIO = require('../../io');
 
 exports.createPost = async (req, res, next) => {
+	// TODO: đăng ảnh lên cloudinary -> đăng vào mongodb
 	const { userId } = req;
 	const { content } = req.body;
 
@@ -62,9 +63,9 @@ exports.getPosts = async (req, res, next) => {
 	const POST_PER_PAGE = 10;
 	const { userId } = req;
 	try {
-		const total = await Post.find({ available: true }).countDocuments();
+		const total = await Post.find().countDocuments();
 
-		const posts = await Post.find({ available: true }, '-subcribers')
+		const posts = await Post.find({}, '-subcribers')
 			.skip(page * POST_PER_PAGE)
 			.limit(POST_PER_PAGE)
 			.sort({ createdAt: -1 })
@@ -84,9 +85,43 @@ exports.getPosts = async (req, res, next) => {
 				comments: post.comments.slice(-1),
 			};
 		});
-		setTimeout(() => {
-			res.json({ posts: sendBackPost, total });
-		}, 2000);
+
+		res.json({ posts: sendBackPost, total });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.getPost = async (req, res, next) => {
+	const { userId } = req;
+	const { postId } = req.params;
+	try {
+		const posts = await Post.findById(postId, '-subcribers')
+			.populate('userId', 'name avatar')
+			.populate('comments.userId', 'name avatar');
+
+		if (!posts) {
+			const error = new Error('Không tìm thấy bài đăng!');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		const sendBackPost = [posts].map((post) => {
+			let likedThisPost = false;
+			if (userId) {
+				likedThisPost = !!post.likes.find((uid) => uid.toString() === userId);
+			}
+			return {
+				...post._doc,
+				likes: post.likes.length,
+				likedThisPost,
+				commentsCount: post.comments.length,
+				comments: post.comments.slice(-5),
+			};
+		});
+
+		res.json({ posts: sendBackPost, total: 1 });
 	} catch (err) {
 		console.log(err);
 		next(err);
@@ -99,16 +134,13 @@ exports.deletePost = async (req, res, next) => {
 
 	// TODO: tìm post -> xác thực có đúng người đăng hay không -> xóa -> lưu log -> socket
 	try {
-		const post = await Post.findOne({ _id: postId, userId });
+		const post = await Post.findOneAndDelete({ _id: postId, userId });
 
 		if (!post) {
 			const error = new Error('Không thể thực hiện thao tác!');
 			error.statusCode = 422;
 			return next(error);
 		}
-
-		post.available = false;
-		await post.save();
 
 		// Lưu lại log
 		const log = new Log({ userId, rootId: postId, type: 'delete post' });
@@ -130,6 +162,7 @@ exports.toggleLikePost = async (req, res, next) => {
 	try {
 		// TODO: tìm post -> toggle like
 		const post = await Post.findById(postId);
+		const user = await User.findById(userId, 'name avatar');
 
 		if (!post) {
 			const error = new Error('Không tìm thấy bài đăng!');
@@ -151,11 +184,26 @@ exports.toggleLikePost = async (req, res, next) => {
 
 		// TODO: ghi lại log
 		const log = await Log.findOne({ userId, rootId: postId, type: 'like' });
-		console.log(log);
 
-		if (!log) {
+		if (!log && userId !== post.userId.toString()) {
 			const saveLog = new Log({ userId, rootId: postId, type: 'like' });
 			saveLog.save();
+
+			const ownerPostUser = await User.findById(post.userId, 'notifications');
+			ownerPostUser.notifications.newNotifications += 1;
+			ownerPostUser.notifications.list.push({ hasRead: false, logId: saveLog });
+			ownerPostUser.save();
+		}
+
+		if (likedThisPost && userId !== post.userId.toString()) {
+			socketIO
+				.getIO()
+				.to(post.userId.toString())
+				.emit('like post', {
+					postId,
+					user,
+					content: post.content.slice(0, 48),
+				});
 		}
 
 		res.json({ likedThisPost, likes: post.likes.length });
@@ -204,6 +252,22 @@ exports.postComment = async (req, res, next) => {
 		// TODO: ghi lại log
 		const log = new Log({ userId, rootId: post._id, type: 'comment post' });
 		await log.save();
+
+		// TODO: push notification cho user + realtime notification
+		for (const subcriberId of post.subcribers) {
+			if (userId === subcriberId.toString()) continue;
+
+			const subcriber = await User.findById(subcriberId, 'notifications');
+			subcriber.notifications.newNotifications++;
+			subcriber.notifications.list.push({ logId: log });
+			await subcriber.save();
+
+			io.to(subcriberId.toString()).emit('comment post', {
+				user: userComment,
+				postId,
+				content: post.content,
+			});
+		}
 
 		res.status(201).json({ message: 'ok' });
 	} catch (err) {
