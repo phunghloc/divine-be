@@ -26,7 +26,7 @@ const userSchema = new Schema(
 		},
 		balance: {
 			type: Number,
-			default: 100000,
+			default: 1000000,
 		},
 		cart: [{ type: Schema.Types.ObjectId, required: true, ref: 'Game' }],
 		activatedGames: [

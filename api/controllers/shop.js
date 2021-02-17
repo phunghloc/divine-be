@@ -10,20 +10,44 @@ const Keygame = require('../models/keygame');
 const SockerIO = require('../../io');
 
 exports.getGamesHomepage = async (req, res, next) => {
+	const { developer, sortBy, price, page = 1 } = req.query;
+	const ITEM_PER_PAGE = 12;
+
 	try {
-		const games = await Game.find({}, 'name price images').sort('-createdAt');
-		// .limit(12);
-		const sendBackGames = games.map((game) => {
-			const newGame = { ...game._doc };
-			newGame.images = newGame.images[0].url;
-			return newGame;
-		});
-		res.status(200).json({ games: sendBackGames });
+		const queryObj = {};
+		if (developer) {
+			queryObj.developer = developer;
+		}
+
+		let sortByObj = '-createdAt';
+		if (sortBy) {
+			const [method, category] = sortBy.split('-');
+			sortByObj = { [category]: method === 'dec' ? -1 : 1 };
+		}
+
+		if (price) {
+			const [min, max] = price.split(',');
+			queryObj.price = { $gte: min };
+			if (max) queryObj.price.$lte = max;
+		}
+
+		const total = await Game.find(queryObj).countDocuments();
+		console.log(total);
+		console.log(page);
+
+		const games = await Game.find(queryObj, {
+			name: 1,
+			price: 1,
+			images: { $slice: 1 },
+		})
+			.skip((page - 1) * ITEM_PER_PAGE)
+			.limit(ITEM_PER_PAGE)
+			.sort(sortByObj);
+
+		res.status(200).json({ games, total });
 	} catch (err) {
 		console.log(err);
-		const error = new Error('Có lỗi với server, xin vui lòng thử lại sau.');
-		error.statusCode = 500;
-		next(error);
+		next(err);
 	}
 };
 
@@ -160,7 +184,7 @@ exports.createCash = async (req, res, next) => {
 		const cashData = {
 			serial: Math.random().toString().replace('0.', ''),
 			code: v4(),
-			denominate: Math.round(Math.random() * 10) * 100000,
+			denominate: 1000000, //Math.round(Math.random() * 10),
 		};
 		const cash = await new Cash(cashData);
 		const result = await cash.save();

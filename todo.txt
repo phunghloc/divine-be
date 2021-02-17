@@ -1,3 +1,9 @@
 làm trang notification
 
 test reponsive đth
+
+đăng thêm bài + infinity load
+
+pagination homepage
+
+bấm vào thời gian post -> chuyển trang //
