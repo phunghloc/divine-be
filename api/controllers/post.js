@@ -59,14 +59,16 @@ exports.createPost = async (req, res, next) => {
 };
 
 exports.getPosts = async (req, res, next) => {
-	const page = req.query.page || 0;
-	const POST_PER_PAGE = 10;
+	const { lastPostId } = req.query;
+	const POST_PER_PAGE = 3;
 	const { userId } = req;
 	try {
-		const total = await Post.find().countDocuments();
+		// const total = await Post.find().countDocuments();
 
-		const posts = await Post.find({}, '-subcribers')
-			.skip(page * POST_PER_PAGE)
+		let config = lastPostId ? { _id: { $lt: lastPostId } } : {};
+
+		const posts = await Post.find(config, '-subcribers')
+			// .skip(page * POST_PER_PAGE)
 			.limit(POST_PER_PAGE)
 			.sort({ createdAt: -1 })
 			.populate('userId', 'name avatar')
@@ -86,7 +88,7 @@ exports.getPosts = async (req, res, next) => {
 			};
 		});
 
-		res.json({ posts: sendBackPost, total });
+		res.json({ posts: sendBackPost });
 	} catch (err) {
 		console.log(err);
 		next(err);
@@ -122,6 +124,28 @@ exports.getPost = async (req, res, next) => {
 		});
 
 		res.json({ posts: sendBackPost, total: 1 });
+	} catch (err) {
+		console.log(err);
+		next(err);
+	}
+};
+
+exports.getLikesOfPost = async (req, res, next) => {
+	// TODO: tìm post => lấy like gửi về
+	const { postId } = req.params;
+	try {
+		const post = await Post.findById(postId, 'likes').populate(
+			'likes',
+			'name avatar',
+		);
+
+		if (!post) {
+			const error = new Error('Không tìm thấy post');
+			error.statusCode = 404;
+			return next(error);
+		}
+
+		res.json({ post });
 	} catch (err) {
 		console.log(err);
 		next(err);

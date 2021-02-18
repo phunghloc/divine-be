@@ -11,6 +11,8 @@ router.get('/', isLogined, PostController.getPosts);
 
 router.get('/:postId', isLogined, PostController.getPost);
 
+router.get('/:postId/likes', PostController.getLikesOfPost);
+
 // '/posts/create/'
 router.post('/create', isAuth, PostController.createPost);
 
@@ -21,7 +23,10 @@ router.get('/toggle-like/:postId', isAuth, PostController.toggleLikePost);
 router.post('/:postId/comment', isAuth, PostController.postComment);
 
 // /posts/loadmore/:postId/:lastCommentId
-router.get('/loadmore/:postId/:lastCommentId', PostController.loadmoreCommentInPost);
+router.get(
+	'/loadmore/:postId/:lastCommentId',
+	PostController.loadmoreCommentInPost,
+);
 
 // TODO: PUT
 router.put('/:postId/:commentId', isAuth, PostController.updateComment);

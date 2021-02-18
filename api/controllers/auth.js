@@ -114,11 +114,12 @@ exports.getAutoLogin = async (req, res, next) => {
 exports.getNotifications = async (req, res, next) => {
 	// TODO: Lấy 8 thông báo cuối cùng của user
 	const { userId } = req;
+	const { page = 1 } = req.query;
 
 	try {
 		const user = await User.findById(userId, {
 			'notifications.newNotifications': 1,
-			'notifications.list': { $slice: -8 },
+			'notifications.list': { $slice: [-8 * +page, 8] },
 		}).populate({
 			path: 'notifications.list.logId',
 			populate: {

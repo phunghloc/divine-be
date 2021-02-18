@@ -10,6 +10,7 @@ const Keygame = require('../models/keygame');
 const SockerIO = require('../../io');
 
 exports.getGamesHomepage = async (req, res, next) => {
+	// TODO: find trong db theo query
 	const { developer, sortBy, price, page = 1 } = req.query;
 	const ITEM_PER_PAGE = 12;
 

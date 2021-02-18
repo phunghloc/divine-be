@@ -4,6 +4,6 @@ test reponsive đth
 
 đăng thêm bài + infinity load
 
-pagination homepage
+pagination homepage //
 
 bấm vào thời gian post -> chuyển trang //
