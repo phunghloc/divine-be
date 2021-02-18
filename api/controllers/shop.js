@@ -33,8 +33,6 @@ exports.getGamesHomepage = async (req, res, next) => {
 		}
 
 		const total = await Game.find(queryObj).countDocuments();
-		console.log(total);
-		console.log(page);
 
 		const games = await Game.find(queryObj, {
 			name: 1,
